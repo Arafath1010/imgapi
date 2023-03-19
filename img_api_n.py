@@ -1,45 +1,31 @@
+from fastapi import FastAPI
 from bs4 import BeautifulSoup
-from fastapi import FastAPI,File,UploadFile
 import requests
 
+
 app = FastAPI()
-@app.post("/image/{keyword}")
-async def image(keyword):
+@app.post("/search/{keyword}")
+async def search(keyword):
+              l=[]#+ads(keyword)
+              o={}
+              headers={"User-Agent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/107.0.0.0 Safari/537.36"}
 
-        headers = {
-            "User-Agent":
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.114 Safari/537.36"
-        }
+              target_url="https://www.bing.com/search?q="+keyword+"&rdr=1&first={}".format(1)
+                  #print(target_url)
+              resp=requests.get(target_url,headers=headers)
+              soup = BeautifulSoup(resp.text, 'html.parser')
+              completeData = soup.find_all("li",{"class":"b_algo"})
+              for data in completeData:
 
-        params = {
-            "q": keyword,
-            "cc": "us" # language/country of the search
-        }
+                       o["Title"]=data.find("a").text
+                       o["link"]=data.find("a").get("href")
+                       discrip = data.find("div", {"class":"b_caption"}).text.split("·")[-1]
+                       o["Description"] = discrip.split(" ",1)[-1]
 
-        html = requests.get('https://www.bing.com/images/search', params=params, headers=headers)
-        soup = BeautifulSoup(html.text, 'lxml')
-        data=[]
-        for result in soup.select('.iusc'):
-               try:
+                       if len(discrip)>50:
+                          l.append(o)
+                       o={}
 
-                    img = str(result).split(",")
-                    temp =[]
-                    for i in img[4:11]:
-                        if '"t"' in i:
-                                i = i.replace('"t":"',"")
-                                temp.append(i.replace('"',""))                
-                        if '"purl"' in i:
-                                i = i.replace('"purl":"',"")
-                                temp.append(i.replace('"',""))
-                        if '"murl"' in i:
-                                i = i.replace('"murl":"',"")
-                                temp.append(i.replace('"',""))
-                        if '"turl"' in i:
-                                i = i.replace('"turl":"',"")
-                                temp.append(i.replace('"',""))
-                    if temp!=[]:
-                            data.append(temp)
-                   
-               except:
-                    print()
-        return {"images":data}
+                     
+              return {"results":l}
+# for run the api uvicorn search_result_api:app
